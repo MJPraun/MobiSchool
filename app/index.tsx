@@ -11,16 +11,32 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { supabase } from '../lib/supabase';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = () => {
-    // Redireciona para o grupo de telas com o menu inferior (Bottom Tabs)
-    router.replace('/(tabs)');
+  const handleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      // Se autenticado com sucesso, vai para as abas
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      alert('Erro ao entrar: ' + error.message);
+    }
   };
+
+ const handleDemoLogin = () => {
+  router.replace('/(tabs)');
+};
 
   return (
     <KeyboardAvoidingView 
@@ -87,7 +103,7 @@ export default function LoginScreen() {
         </View>
 
         {/* Botão Secundário (Demonstração) */}
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleLogin}>
+        <TouchableOpacity style={styles.secondaryButton} onPress={handleDemoLogin}>
           <Ionicons name="search" size={18} color="#60A5FA" style={{ marginRight: 8 }} />
           <Text style={styles.secondaryButtonText}>Entrar como demonstração</Text>
         </TouchableOpacity>
@@ -181,7 +197,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   primaryButton: {
-    backgroundColor: '#3B82F6', // Atualizado para azul ativo para dar destaque de clique
+    backgroundColor: '#3B82F6',
     height: 56,
     borderRadius: 12,
     justifyContent: 'center',
