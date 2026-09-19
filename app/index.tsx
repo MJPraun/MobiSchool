@@ -7,7 +7,8 @@ import {
   StyleSheet, 
   KeyboardAvoidingView, 
   Platform,
-  StatusBar
+  StatusBar,
+  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -34,9 +35,9 @@ export default function LoginScreen() {
     }
   };
 
- const handleDemoLogin = () => {
-  router.replace('/(tabs)');
-};
+  const handleDemoLogin = () => {
+    router.replace('/(tabs)');
+  };
 
   return (
     <KeyboardAvoidingView 
@@ -46,12 +47,12 @@ export default function LoginScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#0B0D17" />
       
       {/* Ícone e Logo */}
-      <View style={styles.logoContainer}>
-        <View style={styles.iconWrapper}>
-          <Text style={styles.iconText}>🚐</Text>
-        </View>
-        <Text style={styles.logoText}>MobiSchool</Text>
-        <Text style={styles.subtitle}>Transporte escolar inteligente</Text>
+      <View style={styles.headerContainer}>
+        <Image 
+          source={require('../assets/images/MobiSchool_sem_fundo_3.png')} 
+          style={styles.logo} 
+          resizeMode="contain"
+        />
       </View>
 
       <View style={styles.formContainer}>
@@ -129,37 +130,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
   },
-  logoContainer: {
+  headerContainer: {
     alignItems: 'center',
-    marginBottom: 40,
-  },
-  iconWrapper: {
-    width: 72,
-    height: 72,
-    backgroundColor: '#1E3A8A',
-    borderRadius: 20,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
+    marginBottom: 40,
+    width: '100%',
   },
-  iconText: {
-    fontSize: 32,
-  },
-  logoText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#94A3B8',
-    marginTop: 8,
+  logo: {
+    width: '90%', 
+    height: 120,  
   },
   formContainer: {
     width: '100%',

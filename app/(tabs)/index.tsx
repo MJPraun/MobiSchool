@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -11,9 +11,9 @@ export default function HomeScreen() {
   const [rotasAtivas, setRotasAtivas] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const carregarResumo = async () => {
+  const carregarResumo = async (isActive = true) => {
     try {
-      setLoading(true);
+      if (isActive) setLoading(true);
 
       // Busca contagem total de alunos vinculados à van
       const { count: countAlunos, error: errorAlunos } = await supabase
@@ -23,20 +23,28 @@ export default function HomeScreen() {
 
       if (errorAlunos) throw errorAlunos;
 
-      setTotalAlunos(countAlunos || 0);
-      // Como a van está em operação padrão, consideramos 2 rotas ativas (Manhã e Tarde) se houver alunos
-      setRotasAtivas(countAlunos && countAlunos > 0 ? 2 : 0);
+      if (isActive) {
+        setTotalAlunos(countAlunos || 0);
+        setRotasAtivas(countAlunos && countAlunos > 0 ? 2 : 0);
+      }
 
     } catch (error) {
       console.log('Erro ao carregar resumo da home:', error);
     } finally {
-      setLoading(false);
+      if (isActive) setLoading(false);
     }
   };
 
   useFocusEffect(
     useCallback(() => {
-      carregarResumo();
+      let isActive = true;
+
+      // Executa a busca garantindo a verificação de montagem
+      carregarResumo(isActive);
+
+      return () => {
+        isActive = false; // Cancela atualizações de estado se a tela desmontar
+      };
     }, [])
   );
 
@@ -47,7 +55,7 @@ export default function HomeScreen() {
       <ScrollView 
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={carregarResumo} tintColor="#8B5CF6" />
+          <RefreshControl refreshing={loading} onRefresh={() => carregarResumo(true)} tintColor="#8B5CF6" />
         }
       >
         <View style={styles.header}>
