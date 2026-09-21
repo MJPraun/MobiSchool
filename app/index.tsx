@@ -106,7 +106,7 @@ export default function LoginScreen() {
           // 1. Consulta a tabela 'profiles'
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
-            .select('tipo')
+            .select('tipo, role')
             .eq('id', authData.user.id)
             .maybeSingle();
 
@@ -116,9 +116,12 @@ export default function LoginScreen() {
 
           // 2. Prioridade: profiles.tipo -> metadata -> fallback 'pai'
           const userType =
-            profile?.tipo || authData.user.user_metadata?.tipo || 'pai';
+            profile?.tipo ||
+            profile?.role ||
+            authData.user.user_metadata?.tipo || 
+            'pai';
 
-          console.log('[LOGIN SUCEsso] Tipo identificado:', userType);
+          console.log('[LOGIN SUCESSO] Tipo identificado:', userType);
           redirectUser(userType);
         }
       }
