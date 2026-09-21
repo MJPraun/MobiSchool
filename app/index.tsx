@@ -1,241 +1,377 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  KeyboardAvoidingView, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
-  StatusBar,
-  Image
+  ScrollView,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 
+type UserRole = 'pai' | 'motorista' | 'monitora';
+
 export default function LoginScreen() {
+  const router = useRouter();
+
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [senha, setSenha] = useState('');
+  const [tipo, setTipo] = useState<UserRole>('pai');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+  // Redireciona o usuário para a rota correta conforme o perfil de forma segura
+  function redirectUser(userType?: string) {
+    const formattedType = (userType || '').trim().toLowerCase();
 
-      if (error) throw error;
+    console.log('[NAVEGAÇÃO] Redirecionando perfil tipo:', formattedType);
 
-      // Se autenticado com sucesso, vai para as abas
+    if (formattedType === 'motorista') {
       router.replace('/(tabs)');
-    } catch (error: any) {
-      alert('Erro ao entrar: ' + error.message);
+    } else if (formattedType === 'monitora') {
+      router.replace('/monitora');
+    } else {
+      router.replace('/pai');
     }
-  };
+  }
 
-  const handleDemoLogin = () => {
-    router.replace('/(tabs)');
-  };
+  async function handleAuth() {
+    if (!email || !senha) {
+      Alert.alert('Atenção', 'Por favor, preencha o e-mail e a senha.');
+      return;
+    }
+
+    if (isSignUp && !nome) {
+      Alert.alert('Atenção', 'Por favor, preencha o seu nome completo.');
+      return;
+    }
+
+    setLoading(true);
+
+    const tipoSanitizado = tipo.trim().toLowerCase() as UserRole;
+    const emailSanitizado = email.trim();
+    const nomeSanitizado = nome.trim();
+
+    try {
+      if (isSignUp) {
+        // --- CRIAR NOVA CONTA ---
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: emailSanitizado,
+          password: senha,
+          options: {
+            data: {
+              nome: nomeSanitizado,
+              tipo: tipoSanitizado,
+            },
+          },
+        });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          // Garante a gravação ou atualização do perfil na tabela 'profiles'
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: authData.user.id,
+              nome: nomeSanitizado,
+              tipo: tipoSanitizado,
+            });
+
+          if (profileError) {
+            console.log('Aviso ao salvar perfil na tabela:', profileError.message);
+          }
+
+          Alert.alert('Sucesso!', `Conta cadastrada como ${tipoSanitizado.toUpperCase()}.`);
+          redirectUser(tipoSanitizado);
+        }
+      } else {
+        // --- FAZER LOGIN ---
+        const { data: authData, error: authError } =
+          await supabase.auth.signInWithPassword({
+            email: emailSanitizado,
+            password: senha,
+          });
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          // 1. Consulta a tabela 'profiles'
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('tipo')
+            .eq('id', authData.user.id)
+            .maybeSingle();
+
+          if (profileError) {
+            console.log('Aviso ao ler perfil:', profileError.message);
+          }
+
+          // 2. Prioridade: profiles.tipo -> metadata -> fallback 'pai'
+          const userType =
+            profile?.tipo || authData.user.user_metadata?.tipo || 'pai';
+
+          console.log('[LOGIN SUCEsso] Tipo identificado:', userType);
+          redirectUser(userType);
+        }
+      }
+    } catch (err: any) {
+      Alert.alert('Erro', err.message || 'Falha ao autenticar.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#0B0D17" />
-      
-      {/* Ícone e Logo */}
-      <View style={styles.headerContainer}>
-        <Image 
-          source={require('../assets/images/MobiSchool_sem_fundo_3.png')} 
-          style={styles.logo} 
-          resizeMode="contain"
-        />
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* LOGO E HEADER */}
+        <View style={styles.header}>
+          <Image
+            source={require('../assets/images/MobiSchool_sem_fundo_3.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
 
-      <View style={styles.formContainer}>
-        {/* Campo E-mail */}
-        <Text style={styles.label}>E-MAIL</Text>
-        <View style={styles.inputContainer}>
+        {/* FORMULÁRIO */}
+        <View style={styles.form}>
+          {isSignUp && (
+            <>
+              <Text style={styles.label}>NOME COMPLETO</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ex: João da Silva"
+                placeholderTextColor="#666"
+                value={nome}
+                onChangeText={setNome}
+                autoCapitalize="words"
+              />
+            </>
+          )}
+
+          <Text style={styles.label}>E-MAIL</Text>
           <TextInput
             style={styles.input}
             placeholder="seu@email.com"
-            placeholderTextColor="#475569"
-            keyboardType="email-address"
-            autoCapitalize="none"
+            placeholderTextColor="#666"
             value={email}
             onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
           />
-        </View>
 
-        {/* Campo Senha */}
-        <Text style={styles.label}>SENHA</Text>
-        <View style={styles.inputContainer}>
+          <Text style={styles.label}>SENHA</Text>
           <TextInput
             style={styles.input}
             placeholder="••••••••"
-            placeholderTextColor="#475569"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
+            placeholderTextColor="#666"
+            value={senha}
+            onChangeText={setSenha}
+            secureTextEntry
           />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color="#94A3B8" />
+
+          {/* SELETOR DE TIPO DE CONTA (Visível no cadastro) */}
+          {isSignUp && (
+            <>
+              <Text style={styles.label}>TIPO DE CONTA</Text>
+              <View style={styles.roleContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.roleButton,
+                    tipo === 'pai' && styles.roleButtonActive,
+                  ]}
+                  onPress={() => setTipo('pai')}
+                >
+                  <Text
+                    style={[
+                      styles.roleText,
+                      tipo === 'pai' && styles.roleTextActive,
+                    ]}
+                  >
+                    Pai
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.roleButton,
+                    tipo === 'motorista' && styles.roleButtonActive,
+                  ]}
+                  onPress={() => setTipo('motorista')}
+                >
+                  <Text
+                    style={[
+                      styles.roleText,
+                      tipo === 'motorista' && styles.roleTextActive,
+                    ]}
+                  >
+                    Motorista
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.roleButton,
+                    tipo === 'monitora' && styles.roleButtonActive,
+                  ]}
+                  onPress={() => setTipo('monitora')}
+                >
+                  <Text
+                    style={[
+                      styles.roleText,
+                      tipo === 'monitora' && styles.roleTextActive,
+                    ]}
+                  >
+                    Monitora
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {/* BOTÃO PRINCIPAL */}
+          <TouchableOpacity
+            style={styles.submitButton}
+            onPress={handleAuth}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.submitButtonText}>
+                {isSignUp ? 'Criar Conta' : 'Entrar'}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          {/* TROCAR ENTRE LOGIN E CADASTRO */}
+          <TouchableOpacity
+            style={styles.toggleButton}
+            onPress={() => setIsSignUp(!isSignUp)}
+          >
+            <Text style={styles.toggleButtonText}>
+              {isSignUp
+                ? 'Já tem uma conta? Faça Login'
+                : 'Não tem uma conta? Cadastre-se'}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Esqueci a senha */}
-        <TouchableOpacity style={styles.forgotPassword}>
-          <Text style={styles.forgotPasswordText}>Esqueceu a senha?</Text>
-        </TouchableOpacity>
-
-        {/* Botão Principal */}
-        <TouchableOpacity style={styles.primaryButton} onPress={handleLogin}>
-          <Text style={styles.primaryButtonText}>Entrar</Text>
-        </TouchableOpacity>
-
-        {/* Divisor */}
-        <View style={styles.dividerContainer}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ou</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        {/* Botão Secundário (Demonstração) */}
-        <TouchableOpacity style={styles.secondaryButton} onPress={handleDemoLogin}>
-          <Ionicons name="search" size={18} color="#60A5FA" style={{ marginRight: 8 }} />
-          <Text style={styles.secondaryButtonText}>Entrar como demonstração</Text>
-        </TouchableOpacity>
-
-        {/* Cadastro */}
-        <View style={styles.registerContainer}>
-          <Text style={styles.registerText}>Não tem conta? </Text>
-          <TouchableOpacity>
-            <Text style={styles.registerLink}>Cadastre-se</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <Text style={styles.versionText}>versão 1.0.0 · MobiSchool</Text>
+        {/* RODAPÉ */}
+        <Text style={styles.footerText}>versão 1.0.0 · MobiSchool</Text>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#0B0D17',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  headerContainer: {
+    flexGrow: 1,
+    backgroundColor: '#0B0F19',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 40,
-    width: '100%',
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
   },
   logo: {
-    width: '90%', 
-    height: 120,  
+    width: 320,
+    height: 130,
   },
-  formContainer: {
+  form: {
     width: '100%',
+    backgroundColor: '#121826',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#1F293D',
   },
   label: {
+    color: '#8A99AD',
     fontSize: 12,
     fontWeight: '600',
-    color: '#94A3B8',
     marginBottom: 8,
-    letterSpacing: 1,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#131824',
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 56,
-    marginBottom: 20,
+    marginTop: 12,
+    letterSpacing: 0.5,
   },
   input: {
+    backgroundColor: '#0B0F19',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: '#FFF',
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: '#2A364F',
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+    gap: 8,
+  },
+  roleButton: {
     flex: 1,
-    color: '#FFFFFF',
-    fontSize: 16,
+    backgroundColor: '#0B0F19',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2A364F',
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
+  roleButtonActive: {
+    backgroundColor: '#1D4ED8',
+    borderColor: '#3B82F6',
   },
-  forgotPasswordText: {
-    color: '#3B82F6',
-    fontSize: 14,
+  roleText: {
+    color: '#8A99AD',
+    fontSize: 13,
     fontWeight: '500',
   },
-  primaryButton: {
-    backgroundColor: '#3B82F6',
-    height: 56,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+  roleTextActive: {
+    color: '#FFF',
+    fontWeight: 'bold',
   },
-  primaryButtonText: {
-    color: '#FFFFFF',
+  submitButton: {
+    backgroundColor: '#1D4ED8',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  submitButtonText: {
+    color: '#FFF',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  dividerContainer: {
-    flexDirection: 'row',
+  toggleButton: {
+    marginTop: 18,
     alignItems: 'center',
-    marginVertical: 24,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#1E293B',
-  },
-  dividerText: {
-    color: '#475569',
-    paddingHorizontal: 16,
+  toggleButtonText: {
+    color: '#60A5FA',
     fontSize: 14,
   },
-  secondaryButton: {
-    flexDirection: 'row',
-    height: 56,
-    borderWidth: 1,
-    borderColor: '#1E293B',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0F131F',
-  },
-  secondaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  registerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 32,
-  },
-  registerText: {
-    color: '#94A3B8',
-    fontSize: 14,
-  },
-  registerLink: {
-    color: '#3B82F6',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  versionText: {
-    position: 'absolute',
-    bottom: 24,
-    alignSelf: 'center',
-    color: '#475569',
+  footerText: {
+    color: '#4B5563',
     fontSize: 12,
+    marginTop: 32,
   },
 });
