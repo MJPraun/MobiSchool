@@ -10,39 +10,27 @@ export default function AlunosScreen() {
   const [salvando, setSalvando] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-  // Estados para o formulário de cadastro de aluno
+  // Estados para o formulário de cadastro de aluno pelo motorista
   const [nome, setNome] = useState('');
   const [escola, setEscola] = useState('');
   const [serie, setSerie] = useState('');
-  const [turno, setTurno] = useState('Manhã'); // Padrão: Manhã
+  const [turno, setTurno] = useState('Manhã');
   const [telefone, setTelefone] = useState('');
 
   const buscarAlunos = async () => {
     try {
       setLoading(true);
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        setAlunos([]);
-        return;
-      }
-
-      // Busca TODOS os alunos vinculados ao pai logado (sem restrição .single())
+      // Remove o filtro restritivo .eq('motorista_id', ...) para garantir que exibe todos os alunos cadastrados
       const { data, error } = await supabase
         .from('alunos')
         .select('*')
-        .eq('pai_id', user.id);
+        .order('nome', { ascending: true });
 
       if (error) throw error;
-
-      setAlunos(data || []);
-      if (!data || data.length === 0) {
-        setShowForm(true); // Se não houver alunos, abre o formulário direto
-      } else {
-        setShowForm(false);
-      }
+      setAlunos(Array.isArray(data) ? data : []);
     } catch (error: any) {
       console.log('Erro ao buscar alunos:', error.message);
+      setAlunos([]);
     } finally {
       setLoading(false);
     }
@@ -62,22 +50,20 @@ export default function AlunosScreen() {
 
     try {
       setSalvando(true);
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        Alert.alert('Sessão expirada', 'Faça login novamente.');
-        return;
-      }
+      const { data: { user } } = await supabase.auth.getUser();
 
       const { error } = await supabase.from('alunos').insert([
         {
-          pai_id: user.id,
+          motorista_id: user ? user.id : null,
           nome: nome.trim(),
           escola: escola.trim(),
+          turma_escola: serie.trim(),
           serie: serie.trim(),
           turno: turno.trim(),
           telefone_contato: telefone.trim(),
           status_embarque: 'Aguardando',
+          status_pagamento: 'Pendente',
+          tipo_pagamento: 'Pix',
         }
       ]);
 
@@ -98,10 +84,10 @@ export default function AlunosScreen() {
     }
   };
 
-  const handleExcluirAluno = (id: string) => {
+  const handleExcluirAluno = (id: string, nomeAluno: string) => {
     Alert.alert(
       'Remover Aluno',
-      'Tem certeza de que deseja remover este aluno?',
+      `Tem certeza de que deseja remover ${nomeAluno}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -129,20 +115,85 @@ export default function AlunosScreen() {
     );
   }
 
+  // Função inteligente para classificar o turno independentemente de maiúsculas, minúsculas ou acentos
+  const classificarTurno = (turnoStr: string) => {
+    if (!turnoStr) return 'Manhã';
+    const t = turnoStr.toLowerCase();
+    if (t.includes('tard')) return 'Tarde';
+    if (t.includes('integ')) return 'Integral';
+    if (t.includes('manh')) return 'Manhã';
+    return turnoStr;
+  };
+
+  const listaAlunos = Array.isArray(alunos) ? alunos : [];
+  const alunosManha = listaAlunos.filter(a => classificarTurno(a.turno) === 'Manhã');
+  const alunosTarde = listaAlunos.filter(a => classificarTurno(a.turno) === 'Tarde');
+  const alunosIntegral = listaAlunos.filter(a => classificarTurno(a.turno) === 'Integral');
+  const outrosAlunos = listaAlunos.filter(a => {
+    const c = classificarTurno(a.turno);
+    return c !== 'Manhã' && c !== 'Tarde' && c !== 'Integral';
+  });
+
+  const renderizarSecaoTurno = (titulo: string, lista: any[], corIndicador: string) => {
+    if (lista.length === 0) return null;
+
+    return (
+      <View key={titulo} style={styles.turnoSection}>
+        <View style={styles.turnoHeader}>
+          <View style={[styles.turnoDot, { backgroundColor: corIndicador }]} />
+          <Text style={styles.turnoTitle}>{titulo} ({lista.length})</Text>
+        </View>
+
+        {lista.map((aluno) => (
+          <View key={aluno.id} style={styles.cardInfo}>
+            <View style={styles.cardHeaderRow}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="person" size={20} color={corIndicador} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 14 }}>
+                <Text style={styles.cardAlunoNome}>{aluno.nome}</Text>
+                <Text style={styles.cardEscola}>{aluno.escola || 'Escola não informada'}</Text>
+              </View>
+              <TouchableOpacity onPress={() => handleExcluirAluno(aluno.id, aluno.nome)}>
+                <Ionicons name="trash-outline" size={20} color="#EF4444" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.specsRow}>
+              <View style={styles.specItem}>
+                <Text style={styles.specLabel}>Série / Turma</Text>
+                <Text style={styles.specValue}>{aluno.serie || aluno.turma_escola || '—'}</Text>
+              </View>
+              <View style={styles.specItem}>
+                <Text style={styles.specLabel}>Status Pagamento</Text>
+                <Text style={[styles.specValue, { color: aluno.status_pagamento === 'Pago' ? '#34D399' : '#F87171' }]}>
+                  {aluno.status_pagamento || 'Pendente'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B0D17" />
       
       <View style={styles.headerRow}>
         <View>
-          <Text style={styles.headerTitle}>Painel do Aluno 👦</Text>
-          <Text style={styles.headerSubtitle}>Gerencie os seus filhos e transporte</Text>
+          <Text style={styles.headerTitle}>Lista de Alunos 🚌</Text>
+          <Text style={styles.headerSubtitle}>Alunos organizados por turno escolar</Text>
         </View>
-        {alunos.length > 0 && !showForm && (
-          <TouchableOpacity style={styles.addHeaderBtn} onPress={() => setShowForm(true)}>
-            <Ionicons name="add" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity 
+          style={styles.addHeaderBtn} 
+          onPress={() => setShowForm(!showForm)}
+        >
+          <Ionicons name={showForm ? "close" : "add"} size={22} color="#FFFFFF" />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -151,9 +202,9 @@ export default function AlunosScreen() {
             <View style={styles.emptyIconCircle}>
               <Ionicons name="school-outline" size={48} color="#64748B" />
             </View>
-            <Text style={styles.emptyTitle}>Cadastrar Filho(a)</Text>
+            <Text style={styles.emptyTitle}>Cadastrar Novo Aluno</Text>
             <Text style={styles.emptySubtitle}>
-              Informe os dados escolares para o cálculo automático das rotas.
+              Insira os dados do aluno para o controlo da van.
             </Text>
 
             <View style={styles.inputGroup}>
@@ -189,7 +240,6 @@ export default function AlunosScreen() {
               />
             </View>
 
-            {/* SELETOR DE TURNO */}
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Turno Escolar</Text>
               <View style={styles.turnoRow}>
@@ -234,51 +284,36 @@ export default function AlunosScreen() {
               )}
             </TouchableOpacity>
 
-            {alunos.length > 0 && (
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => setShowForm(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity 
+              style={styles.cancelButton}
+              onPress={() => setShowForm(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View>
-            {alunos.map((aluno) => (
-              <View key={aluno.id} style={styles.cardInfo}>
-                <View style={styles.cardHeaderRow}>
-                  <View style={styles.iconCircle}>
-                    <Ionicons name="person" size={24} color="#34D399" />
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 14 }}>
-                    <Text style={styles.cardAlunoNome}>{aluno.nome}</Text>
-                    <Text style={styles.cardEscola}>{aluno.escola || 'Escola não informada'}</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => handleExcluirAluno(aluno.id)}>
-                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
-                  </TouchableOpacity>
+            {listaAlunos.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconCircle}>
+                  <Ionicons name="school-outline" size={48} color="#64748B" />
                 </View>
-
-                <View style={styles.divider} />
-
-                <View style={styles.specsRow}>
-                  <View style={styles.specItem}>
-                    <Text style={styles.specLabel}>Série</Text>
-                    <Text style={styles.specValue}>{aluno.serie || '—'}</Text>
-                  </View>
-                  <View style={styles.specItem}>
-                    <Text style={styles.specLabel}>Turno</Text>
-                    <Text style={[styles.specValue, { color: '#34D399' }]}>{aluno.turno || 'Manhã'}</Text>
-                  </View>
-                </View>
+                <Text style={styles.emptyTitleText}>Nenhum aluno cadastrado no sistema.</Text>
+                <TouchableOpacity 
+                  style={styles.primaryAddButton} 
+                  onPress={() => setShowForm(true)}
+                >
+                  <Text style={styles.primaryAddButtonText}>Cadastrar Primeiro Aluno</Text>
+                </TouchableOpacity>
               </View>
-            ))}
-
-            <TouchableOpacity style={styles.addButtonFull} onPress={() => setShowForm(true)}>
-              <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.addButtonFullText}>Cadastrar Outro Filho</Text>
-            </TouchableOpacity>
+            ) : (
+              <View>
+                {renderizarSecaoTurno('Turno da Manhã', alunosManha, '#F59E0B')}
+                {renderizarSecaoTurno('Turno da Tarde', alunosTarde, '#3B82F6')}
+                {renderizarSecaoTurno('Turno Integral', alunosIntegral, '#8B5CF6')}
+                {renderizarSecaoTurno('Outros Turnos', outrosAlunos, '#10B981')}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -290,26 +325,30 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0B0D17', paddingTop: 50 },
   centerContainer: { flex: 1, backgroundColor: '#0B0D17', justifyContent: 'center', alignItems: 'center' },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 20 },
-  headerTitle: { fontSize: 26, fontWeight: 'bold', color: '#FFFFFF' },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#FFFFFF' },
   headerSubtitle: { fontSize: 13, color: '#64748B', marginTop: 2 },
   addHeaderBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#8B5CF6', justifyContent: 'center', alignItems: 'center' },
-  content: { padding: 20, paddingBottom: 40 },
-  cardInfo: { backgroundColor: '#131824', padding: 18, borderRadius: 16, borderWidth: 1, borderColor: '#1E293B', marginBottom: 14 },
+  content: { padding: 20, paddingBottom: 40, flexGrow: 1 },
+  turnoSection: { marginBottom: 22 },
+  turnoHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  turnoDot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
+  turnoTitle: { fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' },
+  cardInfo: { backgroundColor: '#131824', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#1E293B', marginBottom: 10 },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center' },
-  iconCircle: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(52, 211, 153, 0.15)', justifyContent: 'center', alignItems: 'center' },
-  cardAlunoNome: { fontSize: 18, fontWeight: 'bold', color: '#FFFFFF' },
-  cardEscola: { fontSize: 13, color: '#64748B', marginTop: 2 },
-  divider: { height: 1, backgroundColor: '#1E293B', marginVertical: 14 },
+  iconCircle: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(52, 211, 153, 0.15)', justifyContent: 'center', alignItems: 'center' },
+  cardAlunoNome: { fontSize: 16, fontWeight: 'bold', color: '#FFFFFF' },
+  cardEscola: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  divider: { height: 1, backgroundColor: '#1E293B', marginVertical: 12 },
   specsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   specItem: { flex: 1 },
   specLabel: { fontSize: 11, color: '#64748B', marginBottom: 2 },
-  specValue: { fontSize: 14, fontWeight: 'bold', color: '#FFFFFF' },
-  addButtonFull: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#8B5CF6', paddingVertical: 16, borderRadius: 12, marginTop: 10 },
-  addButtonFullText: { color: '#FFFFFF', fontSize: 15, fontWeight: 'bold' },
-  formContainer: { backgroundColor: '#131824', padding: 24, borderRadius: 16, borderWidth: 1, borderColor: '#1E293B' },
+  specValue: { fontSize: 13, fontWeight: 'bold', color: '#FFFFFF' },
+  emptyContainer: { backgroundColor: '#131824', padding: 24, borderRadius: 16, borderWidth: 1, borderColor: '#1E293B', alignItems: 'center', marginTop: 20 },
   emptyIconCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', marginBottom: 16 },
+  emptyTitleText: { fontSize: 15, color: '#94A3B8', textAlign: 'center', marginBottom: 20 },
   emptyTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFFFFF', textAlign: 'center', marginBottom: 8 },
   emptySubtitle: { fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  formContainer: { backgroundColor: '#131824', padding: 24, borderRadius: 16, borderWidth: 1, borderColor: '#1E293B' },
   inputGroup: { marginBottom: 16 },
   label: { color: '#E2E8F0', fontSize: 14, fontWeight: '600', marginBottom: 8 },
   input: { backgroundColor: '#0B0D17', borderWidth: 1, borderColor: '#1E293B', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: '#FFFFFF', fontSize: 15 },
