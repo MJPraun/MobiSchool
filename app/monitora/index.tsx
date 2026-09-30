@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, StyleSheet, ActivityIndicator, Alert, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { useTheme } from '../../context/ThemeContext';
 
 interface Aluno {
   id: string;
@@ -11,6 +13,7 @@ interface Aluno {
 }
 
 export default function MonitoraScreen() {
+  const { colors, modoEscuro, toggleModoEscuro } = useTheme();
   const [turno, setTurno] = useState<'manha' | 'tarde'>('manha');
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,92 +59,144 @@ export default function MonitoraScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Chamada da Van 🚐</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={modoEscuro ? "light-content" : "dark-content"} backgroundColor={colors.background} />
+      
+      {/* Cabeçalho Padronizado com Botão de Tema e Chat */}
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <View>
+          <Text style={[styles.welcomeSub, { color: colors.subtext }]}>Painel da Monitora</Text>
+          <Text style={[styles.welcomeTitle, { color: colors.text }]}>MobiSchool</Text>
+        </View>
 
-      {/* Selector de Turno */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, turno === 'manha' && styles.activeTab]}
-          onPress={() => setTurno('manha')}
-        >
-          <Text style={styles.tabText}>☀️ Manhã</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          {/* Botão de Modo Claro / Escuro */}
+          <TouchableOpacity 
+            style={[styles.themeToggleBtn, { backgroundColor: colors.background, borderColor: colors.border }]}
+            onPress={toggleModoEscuro}
+          >
+            <Ionicons name={modoEscuro ? "sunny" : "moon"} size={18} color={modoEscuro ? "#F59E0B" : "#4F46E5"} />
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.tab, turno === 'tarde' && styles.activeTab]}
-          onPress={() => setTurno('tarde')}
-        >
-          <Text style={styles.tabText}>⛅ Tarde</Text>
-        </TouchableOpacity>
+          {/* Botão de Chat */}
+          <TouchableOpacity 
+            style={styles.chatIconBtn}
+            onPress={() => router.push('/chat' as any)}
+          >
+            <Ionicons name="chatbubble" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#8B5CF6" style={{ marginTop: 20 }} />
-      ) : (
-        <FlatList
-          data={alunos}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>Nenhum aluno registado neste turno.</Text>
-          }
-          renderItem={({ item }) => (
-            <View style={styles.studentCard}>
-              <Text style={styles.studentName}>{item.nome}</Text>
-              <Text style={styles.schoolText}>{item.escola}</Text>
+      <View style={styles.content}>
+        {/* Selector de Turno */}
+        <View style={[styles.tabContainer, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }]}>
+          <TouchableOpacity 
+            style={[styles.tab, turno === 'manha' && { backgroundColor: colors.primary }]}
+            onPress={() => setTurno('manha')}
+          >
+            <Text style={[styles.tabText, { color: turno === 'manha' ? '#FFF' : colors.text }]}>☀️ Manhã</Text>
+          </TouchableOpacity>
 
-              <View style={styles.actionGrid}>
-                <TouchableOpacity 
-                  style={[styles.actionBtn, { backgroundColor: '#10B981' }]}
-                  onPress={() => registrarEmbarque(item.id, 'embarque_casa')}
-                >
-                  <Ionicons name="home" size={16} color="#FFF" />
-                  <Text style={styles.btnText}>Embarcou (Casa)</Text>
-                </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, turno === 'tarde' && { backgroundColor: colors.primary }]}
+            onPress={() => setTurno('tarde')}
+          >
+            <Text style={[styles.tabText, { color: turno === 'tarde' ? '#FFF' : colors.text }]}>⛅ Tarde</Text>
+          </TouchableOpacity>
+        </View>
 
-                <TouchableOpacity 
-                  style={[styles.actionBtn, { backgroundColor: '#3B82F6' }]}
-                  onPress={() => registrarEmbarque(item.id, 'desembarque_escola')}
-                >
-                  <Ionicons name="school" size={16} color="#FFF" />
-                  <Text style={styles.btnText}>Escola</Text>
-                </TouchableOpacity>
+        {loading ? (
+          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }} />
+        ) : (
+          <FlatList
+            data={alunos}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            ListEmptyComponent={
+              <Text style={[styles.emptyText, { color: colors.subtext }]}>Nenhum aluno registado neste turno.</Text>
+            }
+            renderItem={({ item }) => (
+              <View style={[styles.studentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.studentName, { color: colors.text }]}>{item.nome}</Text>
+                <Text style={[styles.schoolText, { color: colors.subtext }]}>{item.escola}</Text>
 
-                <TouchableOpacity 
-                  style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
-                  onPress={() => registrarEmbarque(item.id, 'embarque_escola')}
-                >
-                  <Ionicons name="bus" size={16} color="#FFF" />
-                  <Text style={styles.btnText}>Volta (Escola)</Text>
-                </TouchableOpacity>
+                <View style={styles.actionGrid}>
+                  <TouchableOpacity 
+                    style={[styles.actionBtn, { backgroundColor: '#10B981' }]}
+                    onPress={() => registrarEmbarque(item.id, 'embarque_casa')}
+                  >
+                    <Ionicons name="home" size={16} color="#FFF" />
+                    <Text style={styles.btnText}>Embarcou (Casa)</Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={[styles.actionBtn, { backgroundColor: '#6366F1' }]}
-                  onPress={() => registrarEmbarque(item.id, 'desembarque_casa')}
-                >
-                  <Ionicons name="checkmark-circle" size={16} color="#FFF" />
-                  <Text style={styles.btnText}>Entregue</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.actionBtn, { backgroundColor: '#3B82F6' }]}
+                    onPress={() => registrarEmbarque(item.id, 'desembarque_escola')}
+                  >
+                    <Ionicons name="school" size={16} color="#FFF" />
+                    <Text style={styles.btnText}>Escola</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.actionBtn, { backgroundColor: '#F59E0B' }]}
+                    onPress={() => registrarEmbarque(item.id, 'embarque_escola')}
+                  >
+                    <Ionicons name="bus" size={16} color="#FFF" />
+                    <Text style={styles.btnText}>Volta (Escola)</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.actionBtn, { backgroundColor: '#6366F1' }]}
+                    onPress={() => registrarEmbarque(item.id, 'desembarque_casa')}
+                  >
+                    <Ionicons name="checkmark-circle" size={16} color="#FFF" />
+                    <Text style={styles.btnText}>Entregue</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          )}
-        />
-      )}
+            )}
+          />
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0B0D17', padding: 20, paddingTop: 60 },
-  title: { fontSize: 26, fontWeight: 'bold', color: '#FFF', marginBottom: 20 },
-  tabContainer: { flexDirection: 'row', backgroundColor: '#131824', borderRadius: 12, padding: 4, marginBottom: 20 },
+  container: { flex: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 50, paddingHorizontal: 20, paddingBottom: 15, borderBottomWidth: 1 },
+  welcomeSub: { fontSize: 12 },
+  welcomeTitle: { fontSize: 18, fontWeight: 'bold' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  themeToggleBtn: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    borderWidth: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  chatIconBtn: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    backgroundColor: '#3B82F6', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    shadowColor: '#000', 
+    shadowOpacity: 0.1, 
+    shadowRadius: 3, 
+    elevation: 2 
+  },
+  content: { flex: 1, padding: 20 },
+  tabContainer: { flexDirection: 'row', borderRadius: 12, padding: 4, marginBottom: 20 },
   tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 10 },
-  activeTab: { backgroundColor: '#8B5CF6' },
-  tabText: { color: '#FFF', fontWeight: 'bold' },
-  emptyText: { color: '#64748B', textAlign: 'center', marginTop: 30 },
-  studentCard: { backgroundColor: '#131824', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#1E293B', marginBottom: 12 },
-  studentName: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
-  schoolText: { color: '#94A3B8', fontSize: 14, marginBottom: 12 },
+  tabText: { fontWeight: 'bold' },
+  emptyText: { textAlign: 'center', marginTop: 30 },
+  studentCard: { padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 12 },
+  studentName: { fontSize: 18, fontWeight: 'bold' },
+  schoolText: { fontSize: 14, marginBottom: 12 },
   actionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   actionBtn: { width: '48%', flexDirection: 'row', padding: 10, borderRadius: 8, justifyContent: 'center', alignItems: 'center', gap: 6 },
   btnText: { color: '#FFF', fontWeight: 'bold', fontSize: 11 }
