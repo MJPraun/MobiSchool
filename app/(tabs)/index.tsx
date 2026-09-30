@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Alert 
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '../../context/ThemeContext';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -94,94 +94,102 @@ export default function HomeScreen() {
   );
 
   return (
-    <ScrollView 
-      style={{ flex: 1, backgroundColor: colors.background }} 
-      contentContainerStyle={styles.container} 
-      showsVerticalScrollIndicator={false}
-    >
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={modoEscuro ? "light-content" : "dark-content"} backgroundColor={colors.background} />
       
-      {/* Cabeçalho */}
-      <View style={styles.headerRow}>
+      {/* Cabeçalho Padronizado */}
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Olá, Luana Silva! 👋</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.subtext }]}>Resumo do seu dia</Text>
+          <Text style={[styles.welcomeSub, { color: colors.subtext }]}>Resumo do seu dia</Text>
+          <Text style={[styles.welcomeTitle, { color: colors.text }]}>Olá, Luana Silva! 👋</Text>
         </View>
-      </View>
 
-      {/* CARDS DE RESUMO (ALUNOS MANHÃ E TARDE) */}
-      <View style={styles.cardsRow}>
-        <TouchableOpacity style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/alunos')}>
-          <View style={styles.metricIconCircle}>
-            <Ionicons name="sunny-outline" size={20} color="#F59E0B" />
-          </View>
-          <Text style={[styles.metricNumber, { color: colors.text }]}>{totalManha}</Text>
-          <Text style={[styles.metricLabel, { color: colors.subtext }]}>Alunos Manhã</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/alunos')}>
-          <View style={[styles.metricIconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-            <Ionicons name="moon-outline" size={20} color="#3B82F6" />
-          </View>
-          <Text style={[styles.metricNumber, { color: colors.text }]}>{totalTarde}</Text>
-          <Text style={[styles.metricLabel, { color: colors.subtext }]}>Alunos Tarde</Text>
+        <TouchableOpacity 
+          style={styles.chatIconBtn}
+          onPress={() => router.push('/chat' as any)}
+        >
+          <Ionicons name="chatbubble" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
-      {/* CARD DE ROTA ATIVA (AUTOMÁTICA) */}
-      <TouchableOpacity style={[styles.routeActiveCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/alunos')}>
-        <View style={styles.routeActiveHeader}>
-          <View style={[styles.activeDot, { backgroundColor: corRota }]} />
-          <Text style={[styles.routeActiveTitle, { color: colors.subtext }]}>Rota Ativa no Momento</Text>
-        </View>
-        <Text style={[styles.routeActiveValue, { color: colors.text }]}>{rotaAtiva}</Text>
-        <Text style={[styles.routeActiveSub, { color: colors.subtext }]}>Toque para ver a lista de alunos por turno.</Text>
-      </TouchableOpacity>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-      {/* GESTÃO DA VAN */}
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>Gestão da Van</Text>
-      <View style={styles.gridRow}>
-        <TouchableOpacity style={[styles.actionCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => Alert.alert('Monitora', 'Funcionalidade em desenvolvimento')}>
-          <View style={styles.actionIconCircle}>
-            <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
+        {/* CARDS DE RESUMO (ALUNOS MANHÃ E TARDE) */}
+        <View style={styles.cardsRow}>
+          <TouchableOpacity style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/alunos')}>
+            <View style={styles.metricIconCircle}>
+              <Ionicons name="sunny-outline" size={20} color="#F59E0B" />
+            </View>
+            <Text style={[styles.metricNumber, { color: colors.text }]}>{totalManha}</Text>
+            <Text style={[styles.metricLabel, { color: colors.subtext }]}>Alunos Manhã</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/alunos')}>
+            <View style={[styles.metricIconCircle, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+              <Ionicons name="moon-outline" size={20} color="#3B82F6" />
+            </View>
+            <Text style={[styles.metricNumber, { color: colors.text }]}>{totalTarde}</Text>
+            <Text style={[styles.metricLabel, { color: colors.subtext }]}>Alunos Tarde</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* CARD DE ROTA ATIVA (AUTOMÁTICA) */}
+        <TouchableOpacity style={[styles.routeActiveCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/alunos')}>
+          <View style={styles.routeActiveHeader}>
+            <View style={[styles.activeDot, { backgroundColor: corRota }]} />
+            <Text style={[styles.routeActiveTitle, { color: colors.subtext }]}>Rota Ativa no Momento</Text>
           </View>
-          <Text style={[styles.actionTitle, { color: colors.text }]}>Adicionar Monitora</Text>
-          <Text style={[styles.actionSub, { color: colors.subtext }]}>Vincular à van</Text>
+          <Text style={[styles.routeActiveValue, { color: colors.text }]}>{rotaAtiva}</Text>
+          <Text style={[styles.routeActiveSub, { color: colors.subtext }]}>Toque para ver a lista de alunos por turno.</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.actionCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/alunos')}>
-          <View style={styles.actionIconCircle}>
-            <Ionicons name="people-outline" size={20} color="#34D399" />
-          </View>
-          <Text style={[styles.actionTitle, { color: colors.text }]}>Adicionar Pai / Aluno</Text>
-          <Text style={[styles.actionSub, { color: colors.subtext }]}>Gerir alunos</Text>
-        </TouchableOpacity>
-      </View>
+        {/* GESTÃO DA VAN */}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Gestão da Van</Text>
+        <View style={styles.gridRow}>
+          <TouchableOpacity style={[styles.actionCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => Alert.alert('Monitora', 'Funcionalidade em desenvolvimento')}>
+            <View style={styles.actionIconCircle}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
+            </View>
+            <Text style={[styles.actionTitle, { color: colors.text }]}>Adicionar Monitora</Text>
+            <Text style={[styles.actionSub, { color: colors.subtext }]}>Vincular à van</Text>
+          </TouchableOpacity>
 
-      {/* ACESSO RÁPIDO */}
-      <Text style={[styles.sectionTitle, { color: colors.text }]}>Acesso Rápido</Text>
-      <TouchableOpacity style={[styles.quickAccessCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/rotas')}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 }}>
-          <View style={styles.quickIconCircle}>
-            <Ionicons name="map-outline" size={22} color={colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.quickTitle, { color: colors.text }]}>Acompanhar Trajeto</Text>
-            <Text style={[styles.quickSub, { color: colors.subtext }]}>Ver ordem de embarque e status dos alunos</Text>
-          </View>
+          <TouchableOpacity style={[styles.actionCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/alunos')}>
+            <View style={styles.actionIconCircle}>
+              <Ionicons name="people-outline" size={20} color="#34D399" />
+            </View>
+            <Text style={[styles.actionTitle, { color: colors.text }]}>Adicionar Pai / Aluno</Text>
+            <Text style={[styles.actionSub, { color: colors.subtext }]}>Gerir alunos</Text>
+          </TouchableOpacity>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
-      </TouchableOpacity>
 
-    </ScrollView>
+        {/* ACESSO RÁPIDO */}
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Acesso Rápido</Text>
+        <TouchableOpacity style={[styles.quickAccessCard, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => router.push('/(tabs)/rotas')}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 }}>
+            <View style={styles.quickIconCircle}>
+              <Ionicons name="map-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.quickTitle, { color: colors.text }]}>Acompanhar Trajeto</Text>
+              <Text style={[styles.quickSub, { color: colors.subtext }]}>Ver ordem de embarque e status dos alunos</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
+        </TouchableOpacity>
+
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, paddingTop: 50, paddingBottom: 40 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  headerTitle: { fontSize: 22, fontWeight: 'bold' },
-  headerSubtitle: { fontSize: 13, marginTop: 2 },
+  container: { flex: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 50, paddingHorizontal: 20, paddingBottom: 15, borderBottomWidth: 1 },
+  welcomeSub: { fontSize: 12 },
+  welcomeTitle: { fontSize: 18, fontWeight: 'bold' },
+  chatIconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#3B82F6', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 },
+  scrollContent: { padding: 20, paddingBottom: 40 },
   cardsRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
   metricCard: { flex: 1, padding: 16, borderRadius: 16, borderWidth: 1 },
   metricIconCircle: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(245, 158, 11, 0.15)', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },

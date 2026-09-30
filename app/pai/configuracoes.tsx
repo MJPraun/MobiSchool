@@ -5,12 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../lib/supabase';
 
-export default function AjustesScreen() {
+export default function ConfiguraçõesScreen() {
   const { colors, modoEscuro, toggleModoEscuro } = useTheme();
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.replace('/(auth)/login' as any);
+    router.replace('/(auth)/login' as any); // Ajuste conforme a sua rota de login
   }
 
   return (
@@ -19,8 +19,10 @@ export default function AjustesScreen() {
 
       {/* Cabeçalho */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Ajustes</Text>
-        <Text style={[styles.headerSub, { color: colors.subtext }]}>Preferências e conta</Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Configurações</Text>
       </View>
 
       <View style={styles.content}>
@@ -54,9 +56,8 @@ export default function AjustesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingTop: 50, paddingHorizontal: 20, paddingBottom: 15, borderBottomWidth: 1 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold' },
-  headerSub: { fontSize: 13, marginTop: 2 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingTop: 50, paddingHorizontal: 20, paddingBottom: 15, borderBottomWidth: 1, gap: 15 },
+  headerTitle: { fontSize: 18, fontWeight: 'bold' },
   content: { padding: 20, gap: 16 },
   optionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderRadius: 16, borderWidth: 1 },
   optionInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },

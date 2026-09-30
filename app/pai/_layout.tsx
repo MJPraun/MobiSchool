@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 
-export default function Layout() {
+export default function PaiLayout() {
   const { colors } = useTheme();
 
   return (
@@ -39,23 +39,16 @@ export default function Layout() {
         }}
       />
       <Tabs.Screen
-        name="rotas"
+        name="monitorar"
         options={{
-          title: 'Rotas',
+          title: 'Monitorar',
           tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="veiculo"
+        name="carteira"
         options={{
-          title: 'Veículo',
-          tabBarIcon: ({ color, size }) => <Ionicons name="car" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="financas"
-        options={{
-          title: 'Finanças',
+          title: 'Carteira',
           tabBarIcon: ({ color, size }) => <Ionicons name="wallet" size={size} color={color} />,
         }}
       />
