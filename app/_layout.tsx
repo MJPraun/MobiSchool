@@ -1,15 +1,10 @@
 import { Stack } from 'expo-router';
-import { View } from 'react-native';
-import FloatingChatButton from './components/FloatingChatButton';
+import { ThemeProvider } from './context/ThemeContext';
 
 export default function RootLayout() {
   return (
-    <View style={{ flex: 1, backgroundColor: '#0B0D17' }}>
-      {/* Gestão de rotas principal */}
+    <ThemeProvider>
       <Stack screenOptions={{ headerShown: false }} />
-
-      {/* 💬 Botão Flutuante Global */}
-      <FloatingChatButton />
-    </View>
+    </ThemeProvider>
   );
 }

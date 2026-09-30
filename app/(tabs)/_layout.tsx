@@ -1,21 +1,24 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../context/ThemeContext';
 
 export default function TabsLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
-        headerShown: false, // Esconde o cabeçalho padrão
+        headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#0B0D17', // Cor de fundo do menu igual ao design
+          backgroundColor: colors.card,
           borderTopWidth: 1,
-          borderTopColor: '#1E293B',
+          borderTopColor: colors.border,
           height: 70,
           paddingBottom: 10,
           paddingTop: 10,
         },
-        tabBarActiveTintColor: '#3B82F6', // Azul quando selecionado
-        tabBarInactiveTintColor: '#475569', // Cinza quando inativo
+        tabBarActiveTintColor: '#3B82F6',
+        tabBarInactiveTintColor: colors.subtext,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
@@ -64,6 +67,15 @@ export default function TabsLayout() {
           title: 'Veículo',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="build" size={24} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="configuracoes"
+        options={{
+          title: 'Ajustes',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings" size={24} color={color} />
           ),
         }}
       />
