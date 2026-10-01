@@ -13,7 +13,7 @@ interface Message {
   id: string;
   pai_id: string;
   sender_id: string;
-  sender_role: 'motorista' | 'monitor' | 'pai';
+  sender_role: 'motorista' | 'monitor' | 'monitora' | 'pai';
   conteudo: string;
   tipo: 'informacao' | 'pagamento';
   created_at: string;
@@ -33,6 +33,8 @@ export default function ChatScreen() {
 
   const flatListRef = useRef<FlatList>(null);
   const activePaiId = isPai ? currentUserId : paiIdParam;
+
+  const isMonitorPerfil = isMonitor || role === 'monitor' || role === 'monitora';
 
   useEffect(() => {
     let channel: any;
@@ -61,6 +63,12 @@ export default function ChatScreen() {
           },
           (payload) => {
             const newMsg = payload.new as Message;
+
+            // Se for monitor/monitora, ignorar mensagens privadas de pagamento em tempo real
+            if (isMonitorPerfil && newMsg.tipo === 'pagamento') {
+              return;
+            }
+
             setMessages((prev) => {
               if (prev.some((msg) => msg.id === newMsg.id)) return prev;
               const updated = [...prev, newMsg];
@@ -83,15 +91,21 @@ export default function ChatScreen() {
         supabase.removeChannel(channel);
       }
     };
-  }, [profileLoading, paiIdParam]);
+  }, [profileLoading, paiIdParam, role]);
 
   async function fetchMessages(targetPaiId: string) {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('chat_mensagens')
         .select('*')
-        .eq('pai_id', targetPaiId)
-        .order('created_at', { ascending: true });
+        .eq('pai_id', targetPaiId);
+
+      // Se o utilizador atual for monitor ou monitora, ocultar mensagens do tipo pagamento/privado
+      if (isMonitorPerfil) {
+        query = query.neq('tipo', 'pagamento');
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: true });
 
       if (error) throw error;
       setMessages(data || []);
@@ -116,21 +130,24 @@ export default function ChatScreen() {
 
       if (data) {
         setMonitoraPodeResponder(data.monitora_pode_responder);
+      }else{
+        await supabase.from('configuracoes_van').upsert({ id: 1, monitora_pode_responder: false });
       }
     } catch {
-      // Tabela opcional
+        await supabase.from('configuracoes_van').upsert({ id: 1, monitora_pode_responder: false });
     }
   }
 
   async function toggleMonitoraAccess(value: boolean) {
     setMonitoraPodeResponder(value);
     try {
-      await supabase
+      const {error} = await supabase
         .from('configuracoes_van')
-        .update({ monitora_pode_responder: value })
-        .eq('id', 1);
-    } catch {
-      Alert.alert('Aviso', 'Configuração guardada localmente.');
+        .upsert({ id: 1, monitora_pode_responder: value });
+        
+        if (error) throw error;
+      } catch (err: any) {
+      Alert.alert('Erro', 'Não foi possível guardar a configuração: ' + err.message);
     }
   }
 
@@ -145,7 +162,6 @@ export default function ChatScreen() {
       sender_id: currentUserId,
       sender_role: role,
       conteudo: conteudoEnvio,
-      // Agora o motorista também pode enviar mensagens do tipo pagamento/privado
       tipo: (isPai || isMotorista) ? msgType : 'informacao',
     };
 
@@ -208,7 +224,7 @@ export default function ChatScreen() {
               isMyMsg ? [styles.myMsg, { backgroundColor: colors.primary }] : [styles.otherMsg, { backgroundColor: colors.card, borderColor: colors.border }]
             ]}>
               <View style={styles.senderHeader}>
-                {item.sender_role === 'monitor' && (
+                {(item.sender_role === 'monitor' || item.sender_role === 'monitora') && (
                   <View style={styles.badgeMonitor}>
                     <Text style={styles.badgeText}>MONITORA</Text>
                   </View>
@@ -255,7 +271,7 @@ export default function ChatScreen() {
       )}
 
       {/* Área de Entrada / Bloqueio da Monitora */}
-      {isMonitor && !monitoraPodeResponder ? (
+      {isMonitorPerfil && !monitoraPodeResponder ? (
         <View style={[styles.disabledInput, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Ionicons name="lock-closed-outline" size={18} color={colors.subtext} />
           <Text style={[styles.disabledInputText, { color: colors.subtext }]}>O motorista desativou as respostas da monitora no momento.</Text>
